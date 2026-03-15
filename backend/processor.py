@@ -38,26 +38,34 @@ def tab_to_memory(url: str, title: str, time_spent_seconds: int) -> str:
     if time_spent_seconds < 15:
         return None
 
-    prompt = f"""Convert this browsing event into a concise memory fact (1-2 sentences max).
-Focus on what the user was likely trying to DO or LEARN, not just what page they visited.
-Be specific. Write in third person past tense.
+    prompt = f"""Convert this browsing event into a specific, useful memory fact (1 sentence).
+Rules:
+- Be SPECIFIC about what the page was actually about
+- Mention the exact topic, tool, company, or concept
+- Include what the user was likely trying to accomplish
+- Do NOT be generic — avoid phrases like "researching tech" or "exploring a project"
+- Write in past tense, third person
 
 URL: {url}
 Page title: {title}
 Time spent: {time_spent_seconds} seconds
 
-Examples of good output:
-- "Spent 5 minutes reading about mem0's graph memory architecture, likely evaluating it for a project."
-- "Quickly scanned a GitHub repo for a Python FastAPI boilerplate, probably looking for starter code."
-- "Read a TechCrunch article about Cartesia's Series A funding for about 8 minutes."
+Good examples:
+- "Spent 8 min on mem0's graph memory docs, likely comparing graph vs vector storage approaches."
+- "Read TechCrunch article about mem0's $24M Series A — researching AI memory infrastructure funding."
+- "Explored mem0ai/mem0 GitHub repo for 10 min, likely reviewing the Python SDK and integration examples."
+
+Bad examples (too generic):
+- "User was researching a tech topic."
+- "Spent time on a website about AI."
 
 Output only the memory sentence, nothing else."""
 
     response = openai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=100,
-        temperature=0.3
+        max_tokens=80,
+        temperature=0.2
     )
 
     return response.choices[0].message.content.strip()

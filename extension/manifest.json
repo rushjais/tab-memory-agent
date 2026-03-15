@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Memory Agent",
+  "version": "1.0",
+  "description": "Remembers your browsing context using mem0",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tab Memory Agent"
+  }
+}

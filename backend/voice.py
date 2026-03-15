@@ -7,15 +7,13 @@ load_dotenv()
 cartesia_client = cartesia.Cartesia(api_key=os.getenv("CARTESIA_API_KEY"))
 
 def speak_reminder(message: str) -> bytes:
-    voices = cartesia_client.voices.list()
-    voice = voices[0]
+    voice = next(iter(cartesia_client.voices.list()))
 
     audio_chunks = []
-
     for chunk in cartesia_client.tts.bytes(
         model_id="sonic-2",
         transcript=message,
-        voice_id=voice["id"],
+        voice={"mode": "id", "id": voice.id},
         output_format={
             "container": "wav",
             "encoding": "pcm_f32le",

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Session restore view -->
+  <div id="session-view" style="display:none">
+    <div class="header">
+      <span class="logo">Tab Memory</span>
+      <span class="status">●</span>
+    </div>
+    <div class="section-label">Last session</div>
+    <div class="session-summary" id="session-summary"></div>
+    <div class="topic-pills" id="topic-pills"></div>
+    <div class="reopen-urls" id="session-urls"></div>
+    <button class="dismiss-btn" id="dismiss-session">Continue to chat →</button>
+  </div>
+
+  <!-- Main chat view -->
+  <div id="chat-view">
+    <div class="header">
+      <span class="logo">Tab Memory</span>
+      <span class="status">●</span>
+    </div>
+
+    <!-- Current reminder if any -->
+    <div class="reminder" id="reminder" style="display:none">
+      <div class="reminder-label">Memory surfaced</div>
+      <div class="reminder-text" id="reminder-text"></div>
+      <div class="reminder-actions">
+        <button id="speak-btn">&#9654; Hear this</button>
+        <button id="reopen-btn" style="display:none">↩ Reopen</button>
+      </div>
+    </div>
+
+    <!-- Chat messages -->
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-hint">Ask me anything about your browsing history...</div>
+    </div>
+
+    <!-- Chat input -->
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="What was I researching?" />
+      <button id="chat-send">↑</button>
+    </div>
+
+    <div class="footer">
+      <button id="clear-btn">Clear reminder</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
