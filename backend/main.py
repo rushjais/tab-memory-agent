@@ -63,13 +63,36 @@ async def handle_tab_event(tab: TabEvent):
 @app.post("/check-tab")
 async def check_tab(tab: QueryEvent):
     decision = decide_whether_to_surface({"url": tab.url, "title": tab.title})
+
     if not decision.get("surface"):
         return {"surface": False}
+
     message = decision.get("message", "")
-    if decision.get("mode") == "voice":
-        audio = speak_reminder(message)
-        return Response(content=audio, media_type="audio/wav")
-    return {"surface": True, "message": message, "mode": decision.get("mode", "popup")}
+
+    # Also fetch related URLs from mem0
+    memories = search_tab_memory(
+        f"{tab.title} {tab.url}",
+        user_id="rushil",
+        limit=5
+    )
+
+    related_urls = []
+    for m in memories:
+        if isinstance(m, dict):
+            score = m.get("score", 0)
+            url = m.get("metadata", {}).get("url", "") if m.get("metadata") else ""
+            current_domain = tab.url.split("/")[2] if "//" in tab.url else ""
+            mem_domain = url.split("/")[2] if "//" in url else ""
+            # Only include URLs from different domains (not the same site)
+            if score >= 0.5 and url and url not in related_urls and mem_domain != current_domain:
+                related_urls.append(url)
+
+    return {
+        "surface": True,
+        "message": message,
+        "mode": decision.get("mode", "popup"),
+        "related_urls": related_urls[:3]
+    }
 
 
 @app.post("/speak")

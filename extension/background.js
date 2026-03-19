@@ -7,6 +7,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://")) return;
+    
     const response = await fetch(`${BACKEND}/check-tab`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -18,6 +19,8 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
       await chrome.storage.local.set({
         latestReminder: {
           message: data.message,
+          url: tab.url,
+          relatedUrls: data.related_urls || [],
           timestamp: Date.now(),
           tabId: activeInfo.tabId
         }
@@ -70,6 +73,7 @@ async function storeTabMemory(tabId, tabOverride = null) {
     console.error("tab-event error:", err);
   }
 }
+
 // Feature 1: Session restore on Chrome startup
 chrome.runtime.onStartup.addListener(async () => {
   await chrome.storage.local.remove("sessionShown");
@@ -84,7 +88,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     const res = await fetch(`${BACKEND}/idle-check`, { method: "POST" });
     const data = await res.json();
     if (data.has_idle && data.topics.length > 0) {
-      // Badge the extension icon
       chrome.action.setBadgeText({ text: "!" });
       chrome.action.setBadgeBackgroundColor({ color: "#f59e0b" });
       await chrome.storage.local.set({

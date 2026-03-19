@@ -57,14 +57,42 @@ async function loadReminder() {
   const data = await chrome.storage.local.get("latestReminder");
   if (!data.latestReminder) return;
 
-  const { message, url } = data.latestReminder;
+  const { message, url, relatedUrls } = data.latestReminder;
   document.getElementById("reminder-text").textContent = message;
   document.getElementById("reminder").style.display = "block";
 
+  // Show reopen button for current tab's previous version
   if (url) {
     const reopenBtn = document.getElementById("reopen-btn");
     reopenBtn.style.display = "block";
     reopenBtn.onclick = () => chrome.tabs.create({ url });
+  }
+
+  // Show related URL buttons
+  if (relatedUrls && relatedUrls.length > 0) {
+    const reminderEl = document.getElementById("reminder");
+    
+    const relatedDiv = document.createElement("div");
+    relatedDiv.className = "msg-urls";
+    relatedDiv.style.marginTop = "8px";
+
+    const label = document.createElement("div");
+    label.className = "reminder-label";
+    label.textContent = "Related tabs";
+    label.style.marginBottom = "4px";
+    relatedDiv.appendChild(label);
+
+    relatedUrls.forEach(u => {
+      const btn = document.createElement("button");
+      btn.className = "reopen-url-btn";
+      btn.textContent = "↩ " + u.replace("https://", "").split("/")[0];
+      btn.onclick = () => chrome.tabs.create({ url: u });
+      relatedDiv.appendChild(btn);
+    });
+
+    // Insert before the actions row
+    const actions = reminderEl.querySelector(".reminder-actions");
+    reminderEl.insertBefore(relatedDiv, actions);
   }
 
   document.getElementById("speak-btn").addEventListener("click", async () => {
