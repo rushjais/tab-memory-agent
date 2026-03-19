@@ -1,16 +1,17 @@
 const BACKEND = "http://localhost:8000";
+const isFullTab = window.location.search.includes("mode=voice");
 
 document.addEventListener("DOMContentLoaded", async () => {
   await checkSessionRestore();
   await loadReminder();
   setupChat();
+  setupVoiceCommand();
 });
 
 // Feature 1: Session restore
 async function checkSessionRestore() {
-  const { sessionShown, lastSessionDate } = await chrome.storage.local.get(["sessionShown", "lastSessionDate"]);
+  const { sessionShown } = await chrome.storage.local.get(["sessionShown"]);
   const today = new Date().toDateString();
-
   if (sessionShown === today) return;
 
   try {
@@ -34,7 +35,7 @@ async function checkSessionRestore() {
       data.urls.forEach(url => {
         const btn = document.createElement("button");
         btn.className = "reopen-url-btn";
-        btn.textContent = url;
+        btn.textContent = url.replace("https://", "").split("/")[0];
         btn.onclick = () => chrome.tabs.create({ url });
         urlsEl.appendChild(btn);
       });
@@ -51,7 +52,7 @@ async function checkSessionRestore() {
   });
 }
 
-// Feature 4: Load current reminder with reopen button
+// Feature 4: Load current reminder with reopen + voice buttons
 async function loadReminder() {
   const data = await chrome.storage.local.get("latestReminder");
   if (!data.latestReminder) return;
@@ -103,18 +104,15 @@ function setupChat() {
     if (!text) return;
     input.value = "";
 
-    // Clear hint
     const hint = messages.querySelector(".chat-hint");
     if (hint) hint.remove();
 
-    // Add user message
     const userMsg = document.createElement("div");
     userMsg.className = "msg user";
     userMsg.textContent = text;
     messages.appendChild(userMsg);
     messages.scrollTop = messages.scrollHeight;
 
-    // Add loading
     const loadingMsg = document.createElement("div");
     loadingMsg.className = "msg assistant";
     loadingMsg.textContent = "Thinking...";
@@ -128,10 +126,8 @@ function setupChat() {
         body: JSON.stringify({ message: text })
       });
       const data = await res.json();
-
       loadingMsg.textContent = data.reply;
 
-      // Add reopen URL buttons if any
       if (data.urls && data.urls.length > 0) {
         const urlsDiv = document.createElement("div");
         urlsDiv.className = "msg-urls";
@@ -155,4 +151,124 @@ function setupChat() {
   input.addEventListener("keydown", e => {
     if (e.key === "Enter") sendMessage();
   });
+}
+
+// Feature 5: Voice command
+function setupVoiceCommand() {
+  const micBtn = document.getElementById("mic-btn");
+  const messages = document.getElementById("chat-messages");
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    micBtn.style.display = "none";
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = "en-US";
+
+  let isRecording = false;
+
+  function startRecording() {
+    recognition.start();
+    isRecording = true;
+    micBtn.classList.add("recording");
+    micBtn.textContent = "⏹";
+  }
+
+  function stopRecording() {
+    recognition.stop();
+    isRecording = false;
+    micBtn.classList.remove("recording");
+    micBtn.textContent = "🎤";
+  }
+
+  // If opened as full tab for voice, auto-start
+  if (isFullTab) {
+    setTimeout(() => startRecording(), 500);
+  }
+
+  micBtn.addEventListener("click", () => {
+    if (window.location.search.includes("mode=voice")) {
+      // Already in full tab mode, toggle recording
+      if (isRecording) stopRecording();
+      else startRecording();
+    } else {
+      // Open as full tab for mic access
+      chrome.tabs.create({
+        url: chrome.runtime.getURL("popup.html") + "?mode=voice"
+      });
+    }
+  });
+
+  recognition.onresult = async (event) => {
+    const transcript = event.results[0][0].transcript;
+    stopRecording();
+
+    const hint = messages.querySelector(".chat-hint");
+    if (hint) hint.remove();
+
+    const userMsg = document.createElement("div");
+    userMsg.className = "msg user";
+    userMsg.textContent = "🎤 " + transcript;
+    messages.appendChild(userMsg);
+
+    const loadingMsg = document.createElement("div");
+    loadingMsg.className = "msg assistant";
+    loadingMsg.textContent = "Processing...";
+    messages.appendChild(loadingMsg);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const res = await fetch(`${BACKEND}/voice-command`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript })
+      });
+
+      const reply = res.headers.get("X-Reply") || "Done.";
+      const urlsRaw = res.headers.get("X-Urls") || "[]";
+      const urls = JSON.parse(urlsRaw);
+
+      const blob = await res.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.play();
+
+      loadingMsg.textContent = reply;
+
+      if (urls.length > 0) {
+        const urlsDiv = document.createElement("div");
+        urlsDiv.className = "msg-urls";
+        urls.forEach(url => {
+          const btn = document.createElement("button");
+          btn.className = "msg-url-btn";
+          btn.textContent = "↩ " + url.replace("https://", "").split("/")[0];
+          btn.onclick = () => chrome.tabs.create({ url });
+          urlsDiv.appendChild(btn);
+        });
+        loadingMsg.appendChild(urlsDiv);
+
+        if (transcript.toLowerCase().includes("reopen") ||
+            transcript.toLowerCase().includes("open")) {
+          urls.forEach(url => chrome.tabs.create({ url }));
+        }
+      }
+    } catch (err) {
+      loadingMsg.textContent = "Error processing voice command.";
+    }
+
+    messages.scrollTop = messages.scrollHeight;
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Speech error:", e.error);
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) stopRecording();
+  };
 }

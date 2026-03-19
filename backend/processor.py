@@ -26,6 +26,12 @@ def extract_topic(url: str, title: str) -> str:
         "youtube": "video",
         "notion": "productivity",
         "docs.google": "productivity",
+        "pinecone": "vector_db",
+        "weaviate": "vector_db",
+        "langchain": "ai_tools",
+        "openai": "ai_tools",
+        "anthropic": "ai_tools",
+        "mem0": "ai_memory",
     }
 
     for keyword, topic in topics.items():
@@ -43,7 +49,7 @@ Rules:
 - Be SPECIFIC about what the page was actually about
 - Mention the exact topic, tool, company, or concept
 - Include what the user was likely trying to accomplish
-- Do NOT be generic — avoid phrases like "researching tech" or "exploring a project"
+- Do NOT be generic
 - Write in past tense, third person
 
 URL: {url}
@@ -54,10 +60,6 @@ Good examples:
 - "Spent 8 min on mem0's graph memory docs, likely comparing graph vs vector storage approaches."
 - "Read TechCrunch article about mem0's $24M Series A — researching AI memory infrastructure funding."
 - "Explored mem0ai/mem0 GitHub repo for 10 min, likely reviewing the Python SDK and integration examples."
-
-Bad examples (too generic):
-- "User was researching a tech topic."
-- "Spent time on a website about AI."
 
 Output only the memory sentence, nothing else."""
 
