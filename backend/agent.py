@@ -16,8 +16,6 @@ def get_domain(url: str) -> str:
 
 def decide_whether_to_surface(current_tab: dict, user_id: str = "rushil") -> dict:
     current_domain = get_domain(current_tab['url'])
-
-    # Search using both title and domain for better recall
     query = f"{current_tab['title']} {current_domain}"
     memories = search_tab_memory(query, user_id=user_id, limit=7)
 
@@ -43,7 +41,7 @@ def decide_whether_to_surface(current_tab: dict, user_id: str = "rushil") -> dic
     memory_text = "\n".join(memory_lines)
 
     prompt = f"""You are a browsing memory assistant. A user just opened a tab.
-Your job: find the single most relevant past memory and surface it as a specific reminder.
+Your job: decide if any past memory is genuinely relevant to what they're currently looking at, and surface a specific, useful reminder if so.
 
 Current tab:
 Title: {current_tab['title']}
@@ -53,18 +51,18 @@ Domain: {current_domain}
 Past memories ranked by relevance:
 {memory_text}
 
-Rules:
-- Pick the memory that most directly matches the CURRENT domain or topic
-- "pinecone.io" matches memories about Pinecone or vector databases
-- "github.com" matches memories about coding or specific repos
-- "mem0.ai" matches memories about mem0 or AI memory
-- If the top memory mentions a completely different product/site, return surface false
-- Reminder must be specific, under 15 words, reference actual content from memory
-- Do NOT use generic phrases like "continue exploring" or "check updates"
-
-Good reminder examples:
-- "You researched Pinecone vector search docs — were you comparing to Weaviate?"
-- "You spent 10 min on Pinecone docs earlier — pick up where you left off."
+How to decide:
+- Think about whether the current page's topic, company, person, tool, or concept overlaps meaningfully with any memory
+- Relevance is about TOPIC and INTENT, not just domain matching
+- Example: opening a founder's company page is relevant to a memory about their LinkedIn profile
+- Example: opening a Python docs page is relevant to a memory about a FastAPI tutorial
+- Example: opening a competitor's site is relevant to a memory about a similar product
+- Example: opening a news article about a company is relevant to a memory about that company's product
+- Do NOT surface if the connection is superficial or generic (e.g. both are just "tech websites")
+- Do NOT surface if no memory is genuinely relevant
+- The reminder must be specific and reference actual content from the memory
+- Keep the reminder under 15 words
+- Write it like a helpful colleague who remembers what you were doing, not a robot
 
 Respond with only valid JSON:
 {{"surface": true, "message": "specific reminder under 15 words", "mode": "popup"}}
@@ -81,7 +79,6 @@ or
     raw = response.choices[0].message.content.strip()
     print("AGENT DECISION:", raw)
 
-    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
